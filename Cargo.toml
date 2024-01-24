@@ -3,8 +3,17 @@ name = "rust-tee"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "cryptoenclave"
+crate-type = ["staticlib"]
+
+[features]
+default = []
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-rust-crypto = "^0.2"
-rand = "^0.3"
+[target.'cfg(not(target_env = "sgx"))'.dependencies]
+sgx_types = { git = "https://github.com/apache/teaclave-sgx-sdk.git" }
+sgx_trts = { git = "https://github.com/apache/teaclave-sgx-sdk.git" }
+sgx_tstd = { git = "https://github.com/apache/teaclave-sgx-sdk.git" }
+sgx_tcrypto = { git = "https://github.com/apache/teaclave-sgx-sdk.git" }
