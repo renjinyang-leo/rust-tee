@@ -18,6 +18,7 @@ use sgx_tstd::vec::Vec;
 use sgx_tstd::slice;
 use sgx_tstd::ptr;
 
+#[no_mangle]
 pub extern "C" fn aes_ctr_128_encrypt(key: &[u8;16],
                                       plaintext: *const u8,
                                       text_len: usize,
@@ -49,6 +50,7 @@ pub extern "C" fn aes_ctr_128_encrypt(key: &[u8;16],
     sgx_status_t::SGX_SUCCESS
 }
 
+#[no_mangle]
 pub extern "C" fn aes_ctr_128_decrypt(key: &[u8;16],
                                       ciphertext: *const u8,
                                       text_len: usize,

@@ -7,14 +7,14 @@ enclave {
     trusted {
         /* define ECALLs here. */
         public sgx_status_t aes_ctr_128_encrypt([in] uint8_t key[16],
-                                                [in, size=len] const uint8_t* plaintext,
+                                                [in, size=text_len] const uint8_t* plaintext,
                                                 size_t text_len,
-                                                [out, size=len] uint8_t* ciphertext)
+                                                [out, size=text_len] uint8_t* ciphertext);
 
         public sgx_status_t aes_ctr_128_decrypt([in] uint8_t key[16],
-                                                [in, size=len] const uint8_t ciphertext,
+                                                [in, size=text_len] const uint8_t* ciphertext,
                                                 size_t text_len,
-                                                [out, size=len]uint8_t* plaintext)
+                                                [out, size=text_len] uint8_t* plaintext);
 
         public sgx_status_t aes_gcm_128_encrypt([in] uint8_t key[16],
                                                 [in, size=len] const uint8_t* plaintext,
