@@ -1,5 +1,4 @@
 ######## CUSTOM ARGUMENT ########
-include ../sgx-sdk/buildenv.mk
 CUSTOM_EDL_PATH := ../sgx-sdk/edl
 CUSTOM_LIBRARY_PATH := ../lib
 CUSTOM_ENCLAVE_LIBRARY := ../enclave/Enclave_u.o
@@ -12,8 +11,6 @@ SGX_MODE ?= HW
 
 SGX_COMMON_CFLAGS := -m64
 SGX_LIBRARY_PATH := $(SGX_SDK)/lib64
-SGX_ENCLAVE_SIGNER := $(SGX_SDK)/bin/x64/sgx_sign
-SGX_EDGER8R := $(SGX_SDK)/bin/x64/sgx_edger8r
 
 ifeq ($(SGX_DEBUG), 1)
 ifeq ($(SGX_PRERELEASE), 1)
