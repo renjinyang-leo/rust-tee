@@ -150,7 +150,10 @@ int SGX_CDECL main(int argc, char *argv[])
         return -1;
     }
 
-    if (aes_ctr_128() == -1) { return -1; };
+    if (aes_ctr_128() == -1) { 
+        printf("error: aes-ctr-128 test failed!\n");
+        return -1; 
+    };
     //if (aes_gcm_128() == -1) { return -1; };
 
     /* Destroy the enclave */
@@ -160,60 +163,63 @@ int SGX_CDECL main(int argc, char *argv[])
 }
 
 int aes_ctr_128() {
-    printf("[+] Starting aes-ctr-128 encrypt calculation\n");
-    uint64_t num = 20010703;
-    uint8_t plaintext[16] = {0};
-    memcpy(plaintext, &num, sizeof(uint64_t));
+    srand((unsigned)time(NULL));
+    // 进行1000次测试
+    for (int i = 0; i < 1000; i++) {
+        uint64_t num = rand();
+        uint8_t plaintext[16] = {0};
+        memcpy(plaintext, &num, sizeof(uint64_t));
 
-    char key[] = "b00d44fdbec34270";
-    uint8_t aes_ctr_key[16] = {0};
-    memcpy(aes_ctr_key, (uint8_t *)key, sizeof(aes_ctr_key));
+        char key[] = "b00d44fdbec34270";
+        uint8_t aes_ctr_key[16] = {0};
+        memcpy(aes_ctr_key, (uint8_t *)key, sizeof(aes_ctr_key));
 
-    uint8_t ciphertext[16] = {0};
+        uint8_t ciphertext[16] = {0};
 
-    sgx_status_t enclave_ret = SGX_SUCCESS;
-    sgx_status_t sgx_ret = SGX_SUCCESS;
-    sgx_ret = aes_ctr_128_encrypt(global_eid,
-                                  &enclave_ret,
-                                  aes_ctr_key,
-                                  plaintext,
-                                  16,
-                                  ciphertext);
+        sgx_status_t enclave_ret = SGX_SUCCESS;
+        sgx_status_t sgx_ret = SGX_SUCCESS;
+        sgx_ret = aes_ctr_128_encrypt(global_eid,
+                                    &enclave_ret,
+                                    aes_ctr_key,
+                                    plaintext,
+                                    16,
+                                    ciphertext);
 
-    if(sgx_ret != SGX_SUCCESS) {
-        print_error_message(sgx_ret);
-        return -1;
-    }
+        if(sgx_ret != SGX_SUCCESS) {
+            print_error_message(sgx_ret);
+            return -1;
+        }
 
-    if(enclave_ret != SGX_SUCCESS) {
-        print_error_message(enclave_ret);
-        return -1;
-    }
+        if(enclave_ret != SGX_SUCCESS) {
+            print_error_message(enclave_ret);
+            return -1;
+        }
 
-    printf("[+] Starting aes-ctr-128 decrypt calculation\n");
-    uint8_t decrypted_text[16] = {0};
-    sgx_ret = aes_ctr_128_decrypt(global_eid,
-                                  &enclave_ret,
-                                  aes_ctr_key,
-                                  ciphertext,
-                                  16,
-                                  decrypted_text);
-    
-    if(sgx_ret != SGX_SUCCESS) {
-        print_error_message(sgx_ret);
-        return -1;
-    }
-    if(enclave_ret != SGX_SUCCESS) {
-        print_error_message(enclave_ret);
-        return -1;
-    }
+        uint8_t decrypted_text[16] = {0};
+        sgx_ret = aes_ctr_128_decrypt(global_eid,
+                                    &enclave_ret,
+                                    aes_ctr_key,
+                                    ciphertext,
+                                    16,
+                                    decrypted_text);
+        
+        if(sgx_ret != SGX_SUCCESS) {
+            print_error_message(sgx_ret);
+            return -1;
+        }
+        if(enclave_ret != SGX_SUCCESS) {
+            print_error_message(enclave_ret);
+            return -1;
+        }
 
-    uint64_t de_num;
-    memcpy(&de_num, decrypted_text, sizeof(uint64_t));
-    if (de_num == num) {
-        printf("aes-ctr-128 test pass!\n");
-    } else {
-        printf("aes-ctr-128 test failed!\n");
+        uint64_t de_num;
+        memcpy(&de_num, decrypted_text, sizeof(uint64_t));
+        if (de_num == num) {
+            printf("aes-ctr-128 test#%d pass!\n", i+1);
+        } else {
+            printf("aes-ctr-128 test#%d failed!\n", i+1);
+            return -1;
+        }
     }
 
     return 0;
