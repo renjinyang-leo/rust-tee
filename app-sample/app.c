@@ -166,9 +166,9 @@ int aes_ctr_128() {
     srand((unsigned)time(NULL));
     // 进行1000次测试
     for (int i = 0; i < 1000; i++) {
-        uint64_t num = rand();
+        int64_t num = rand()%2000000 - 1000000;
         uint8_t plaintext[16] = {0};
-        memcpy(plaintext, &num, sizeof(uint64_t));
+        memcpy(plaintext, &num, sizeof(int64_t));
 
         char key[] = "b00d44fdbec34270";
         uint8_t aes_ctr_key[16] = {0};
@@ -212,10 +212,10 @@ int aes_ctr_128() {
             return -1;
         }
 
-        uint64_t de_num;
-        memcpy(&de_num, decrypted_text, sizeof(uint64_t));
+        int64_t de_num;
+        memcpy(&de_num, decrypted_text, sizeof(int64_t));
         if (de_num == num) {
-            printf("aes-ctr-128 test#%d pass!\n", i+1);
+            printf("aes-ctr-128 test#%d pass! num = %ld\n", i+1, num);
         } else {
             printf("aes-ctr-128 test#%d failed!\n", i+1);
             return -1;
