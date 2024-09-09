@@ -81,6 +81,63 @@ pub extern "C" fn aes_ctr_128_decrypt(key: &[u8;16],
     sgx_status_t::SGX_SUCCESS
 }
 
+#[no_mangle]
+pub extern "C" fn aes_ctr_128_int64_compare(key: &[u8;16],
+                                            ciphertext_1: *const u8,
+                                            ciphertext_2: *const u8,
+                                            text_len: usize,
+                                            result: *mut i8) -> sgx_status_t {
+    let ciphertext_slice_1 = unsafe { slice::from_raw_parts(ciphertext_1, text_len) };
+    let ciphertext_slice_2 = unsafe { slice::from_raw_parts(ciphertext_2, text_len) };
+    let mut plaintext_vec_1: Vec<u8> = vec![0; text_len];
+    let mut plaintext_vec_2: Vec<u8> = vec![0; text_len];
+
+    if ciphertext_slice_1.len() != text_len || ciphertext_slice_2.len() != text_len {
+        return sgx_status_t::SGX_ERROR_INVALID_PARAMETER;
+    }
+
+    let plaintext_slice_1 = &mut plaintext_vec_1[..];
+    let plaintext_slice_2 = &mut plaintext_vec_2[..];
+
+    let mut ctr_vec = [0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76];
+    let mut sgx_status = rsgx_aes_ctr_decrypt(key,
+                                        &ciphertext_slice_1,
+                                        &mut ctr_vec,
+                                        8,
+                                        plaintext_slice_1);
+    match sgx_status {
+        Err(x) => { return x; }
+        Ok(()) => {}
+    }
+
+    ctr_vec = [0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76];
+    sgx_status = rsgx_aes_ctr_decrypt(key,
+                                &ciphertext_slice_2,
+                                &mut ctr_vec,
+                                8,
+                                plaintext_slice_2);
+    match sgx_status {
+        Err(x) => { return x; }
+        Ok(()) => {}
+    }
+
+    let mut val_1: i64;
+    let mut val_2: i64;
+    unsafe {
+        val_1 = std::ptr::read_unaligned(plaintext_slice_1.as_ptr() as *const i64);
+        val_2 = std::ptr::read_unaligned(plaintext_slice_2.as_ptr() as *const i64);
+        if val_1 == val_2 {
+            *result = 0;
+        } else if val_1 > val_2 {
+            *result = 1;
+        } else {
+            *result = -1;
+        }
+    }
+
+    sgx_status_t::SGX_SUCCESS
+}
+
 
 #[no_mangle]
 pub extern "C" fn aes_gcm_128_encrypt(key: &[u8;16],

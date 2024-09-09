@@ -16,6 +16,12 @@ enclave {
                                                 size_t text_len,
                                                 [out, size=text_len] uint8_t* plaintext);
 
+        public sgx_status_t aes_ctr_128_int64_compare([in] uint8_t key[16],
+                                                      [in, size=text_len] const uint8_t* ciphertext_1,
+                                                      [in, size=text_len] const uint8_t* ciphertext_2,
+                                                      size_t text_len,
+                                                      [out, size = 1] int8_t* result);
+
         public sgx_status_t aes_gcm_128_encrypt([in] uint8_t key[16],
                                                 [in, size=len] const uint8_t* plaintext,
                                                 size_t len,
