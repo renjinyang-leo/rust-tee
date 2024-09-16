@@ -162,6 +162,20 @@ int SGX_CDECL main(int argc, char *argv[])
     return 0;
 }
 
+char *generate_random_string(int length) {
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const size_t max_index = (int)(sizeof(charset) - 1);
+    char *random_string = (char *)malloc(length + 1);
+
+    if (random_string) {
+        for (int i = 0; i < length; ++i) {
+            random_string[i] = charset[rand() % max_index];
+        }
+        random_string[length] = '\0';
+    }
+    return random_string;
+}
+
 int aes_ctr_128() {
     srand((unsigned)time(NULL));
     char key[] = "b00d44fdbec34270";
@@ -172,10 +186,10 @@ int aes_ctr_128() {
     int total_test=1000, failed_test = 0;
     for (int i = 0; i < total_test; i++) {
         int64_t num = rand()%2000000 - 1000000;
-        uint8_t plaintext[16] = {0};
+        uint8_t plaintext[8] = {0};
         memcpy(plaintext, &num, sizeof(int64_t));
 
-        uint8_t ciphertext[16] = {0};
+        uint8_t ciphertext[8] = {0};
 
         sgx_status_t enclave_ret = SGX_SUCCESS;
         sgx_status_t sgx_ret = SGX_SUCCESS;
@@ -183,7 +197,7 @@ int aes_ctr_128() {
                                     &enclave_ret,
                                     aes_ctr_key,
                                     plaintext,
-                                    16,
+                                    8,
                                     ciphertext);
 
         if(sgx_ret != SGX_SUCCESS) {
@@ -196,12 +210,12 @@ int aes_ctr_128() {
             return -1;
         }
 
-        uint8_t decrypted_text[16] = {0};
+        uint8_t decrypted_text[8] = {0};
         sgx_ret = aes_ctr_128_decrypt(global_eid,
                                     &enclave_ret,
                                     aes_ctr_key,
                                     ciphertext,
-                                    16,
+                                    8,
                                     decrypted_text);
         
         if(sgx_ret != SGX_SUCCESS) {
@@ -220,7 +234,6 @@ int aes_ctr_128() {
         } else {
             failed_test++;
             printf("aes-ctr-128 test#%d failed!\n", i+1);
-            return -1;
         }
     }
     if (failed_test != 0) printf("aes-ctr-128 encrypt and decrypt test failed count = %d, failed rate = %lf\n", failed_test, failed_test*1.0/total_test);
@@ -232,13 +245,13 @@ int aes_ctr_128() {
     for (int i = 0; i < total_test; i++) {
         int64_t num1 = rand()%2000000 - 1000000;
         int64_t num2 = rand()%2000000 - 1000000;
-        uint8_t plaintext1[16] = {0};
-        uint8_t plaintext2[16] = {0};
+        uint8_t plaintext1[8] = {0};
+        uint8_t plaintext2[8] = {0};
         memcpy(plaintext1, &num1, sizeof(int64_t));
         memcpy(plaintext2, &num2, sizeof(int64_t));
 
-        uint8_t ciphertext1[16] = {0};
-        uint8_t ciphertext2[16] = {0};
+        uint8_t ciphertext1[8] = {0};
+        uint8_t ciphertext2[8] = {0};
 
         sgx_status_t enclave_ret = SGX_SUCCESS;
         sgx_status_t sgx_ret = SGX_SUCCESS;
@@ -246,7 +259,7 @@ int aes_ctr_128() {
                                     &enclave_ret,
                                     aes_ctr_key,
                                     plaintext1,
-                                    16,
+                                    8,
                                     ciphertext1);
 
         if (sgx_ret != SGX_SUCCESS) {
@@ -263,7 +276,7 @@ int aes_ctr_128() {
                                     &enclave_ret,
                                     aes_ctr_key,
                                     plaintext2,
-                                    16,
+                                    8,
                                     ciphertext2);
 
         if (sgx_ret != SGX_SUCCESS) {
@@ -275,14 +288,13 @@ int aes_ctr_128() {
             return -1;
         }
 
-        uint8_t decrypted_text[16] = {0};
         int8_t cmp;
         sgx_ret = aes_ctr_128_int64_compare(global_eid,
                                     &enclave_ret,
                                     aes_ctr_key,
                                     ciphertext1,
                                     ciphertext2,
-                                    16,
+                                    8,
                                     &cmp);
         
         if(sgx_ret != SGX_SUCCESS) {
@@ -299,11 +311,153 @@ int aes_ctr_128() {
         } else {
             failed_test++;
             printf("aes-ctr-128 test#%d failed!\n", i+1);
-            return -1;
         }
     }
     if (failed_test != 0) printf("aes-ctr-128 compare test failed count = %d, failed rate = %lf\n", failed_test, failed_test*1.0/total_test);
     else printf("aes-ctr-128 compare test all passed\n");
+    printf("+++++++++++++++++++++++++++++++++++++++++++++\n");
+
+    for (int i = 0; i < total_test; i++) {
+        int64_t length = rand()%500 + 1;
+        uint8_t *plaintext = (uint8_t *)generate_random_string(length);
+
+        uint8_t *ciphertext = (uint8_t *)malloc(length);
+
+        sgx_status_t enclave_ret = SGX_SUCCESS;
+        sgx_status_t sgx_ret = SGX_SUCCESS;
+        sgx_ret = aes_ctr_128_encrypt(global_eid,
+                                      &enclave_ret,
+                                      aes_ctr_key,
+                                      plaintext,
+                                      length,
+                                      ciphertext);
+
+        if(sgx_ret != SGX_SUCCESS) {
+            print_error_message(sgx_ret);
+            return -1;
+        }
+
+        if(enclave_ret != SGX_SUCCESS) {
+            print_error_message(enclave_ret);
+            return -1;
+        }
+
+        uint8_t *decrypted_text = (uint8_t *)malloc(length);;
+        sgx_ret = aes_ctr_128_decrypt(global_eid,
+                                      &enclave_ret,
+                                      aes_ctr_key,
+                                      ciphertext,
+                                      length,
+                                      decrypted_text);
+
+        if(sgx_ret != SGX_SUCCESS) {
+            print_error_message(sgx_ret);
+            return -1;
+        }
+        if(enclave_ret != SGX_SUCCESS) {
+            print_error_message(enclave_ret);
+            return -1;
+        }
+
+        bool fail = false;
+        for (int i = 0; i < length; i++) {
+            if (decrypted_text[i] != plaintext[i]) {
+                fail = true;
+                break;
+            }
+        }
+        if (!fail) {
+            //printf("aes-ctr-128 test#%d pass! num = %ld\n", i+1, num);
+        } else {
+            failed_test++;
+            printf("aes-ctr-128 varchar test#%d failed!\n", i+1);
+        }
+        free(plaintext);
+        free(ciphertext);
+        free(decrypted_text);
+    }
+    if (failed_test != 0) printf("aes-ctr-128 encrypt and decrypt test failed count = %d, failed rate = %lf\n", failed_test, failed_test*1.0/total_test);
+    else printf("aes-ctr-128 varchar encrypt and decrypt test all passed\n");
+    printf("+++++++++++++++++++++++++++++++++++++++++++++\n");
+
+    // 进行1000次测试
+    total_test=1000, failed_test = 0;
+    for (int i = 0; i < total_test; i++) {
+        int64_t length_1 = rand()%500 + 1;
+        int64_t length_2 = rand()%500 + 1;
+        uint8_t *plaintext1 = (uint8_t *)generate_random_string(length_1);
+        uint8_t *plaintext2 = (uint8_t *)generate_random_string(length_2);
+
+        uint8_t *ciphertext1 = (uint8_t *)malloc(length_1);
+        uint8_t *ciphertext2 = (uint8_t *)malloc(length_2);
+
+        sgx_status_t enclave_ret = SGX_SUCCESS;
+        sgx_status_t sgx_ret = SGX_SUCCESS;
+        sgx_ret = aes_ctr_128_encrypt(global_eid,
+                                      &enclave_ret,
+                                      aes_ctr_key,
+                                      plaintext1,
+                                      length_1,
+                                      ciphertext1);
+
+        if (sgx_ret != SGX_SUCCESS) {
+            print_error_message(sgx_ret);
+            return -1;
+        }
+
+        if (enclave_ret != SGX_SUCCESS) {
+            print_error_message(enclave_ret);
+            return -1;
+        }
+
+        sgx_ret = aes_ctr_128_encrypt(global_eid,
+                                      &enclave_ret,
+                                      aes_ctr_key,
+                                      plaintext2,
+                                      length_2,
+                                      ciphertext2);
+
+        if (sgx_ret != SGX_SUCCESS) {
+            print_error_message(sgx_ret);
+            return -1;
+        }
+        if (enclave_ret != SGX_SUCCESS) {
+            print_error_message(enclave_ret);
+            return -1;
+        }
+
+        int8_t cmp;
+        sgx_ret = aes_ctr_128_str_compare(global_eid,
+                                            &enclave_ret,
+                                            aes_ctr_key,
+                                            ciphertext1,
+                                            ciphertext2,
+                                            length_1,
+                                            length_2,
+                                            &cmp);
+
+        if(sgx_ret != SGX_SUCCESS) {
+            print_error_message(sgx_ret);
+            return -1;
+        }
+        if(enclave_ret != SGX_SUCCESS) {
+            print_error_message(enclave_ret);
+            return -1;
+        }
+
+        if ((strcmp((char *)plaintext1, (char *)plaintext2) == 0 && cmp == 0) || (strcmp((char *)plaintext1, (char *)plaintext2) > 0 && cmp == 1) || (strcmp((char *)plaintext1, (char *)plaintext2) < 0 && cmp == -1)) {
+            //printf("aes-ctr-128 test#%d pass! num = %ld\n", i+1, num);
+        } else {
+            failed_test++;
+            printf("aes-ctr-128 varchar compare test#%d failed!\n", i+1);
+        }
+        free(plaintext1);
+        free(plaintext2);
+        free(ciphertext1);
+        free(ciphertext2);
+    }
+    if (failed_test != 0) printf("aes-ctr-128 compare test failed count = %d, failed rate = %lf\n", failed_test, failed_test*1.0/total_test);
+    else printf("aes-ctr-128 varchar compare test all passed\n");
 
     return 0;
 }
