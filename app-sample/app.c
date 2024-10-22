@@ -119,6 +119,20 @@ void print_error_message(sgx_status_t ret)
         printf("Error: Unexpected error occurred.\n");
 }
 
+char *generate_random_string(int length) {
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const size_t max_index = (int)(sizeof(charset) - 1);
+    char *random_string = (char *)malloc(length + 1);
+
+    if (random_string) {
+        for (int i = 0; i < length; ++i) {
+            random_string[i] = charset[rand() % max_index];
+        }
+        random_string[length] = '\0';
+    }
+    return random_string;
+}
+
 int initialize_enclave(void)
 {
     sgx_launch_token_t token = {0};
@@ -136,6 +150,216 @@ int initialize_enclave(void)
     return 0;
 }
 
+static int test_ciphertext_gen()
+{
+    char key[] = "b00d44fdbec34270";
+    uint8_t aes_ctr_key[16] = {0};
+    memcpy(aes_ctr_key, (uint8_t *)key, sizeof(aes_ctr_key));
+
+    int nbits = 62;
+    int64_t rt = rand() % ((uint64_t)1 << nbits);
+    uint8_t plaintext[8] = {0};
+    memcpy(plaintext, &rt, sizeof(int64_t));
+
+    uint8_t ciphertext[8] = {0};
+
+    sgx_status_t enclave_ret = SGX_SUCCESS;
+    sgx_status_t sgx_ret = SGX_SUCCESS;
+    sgx_ret = aes_ctr_128_encrypt(global_eid,
+                                  &enclave_ret,
+                                  aes_ctr_key,
+                                  plaintext,
+                                  8,
+                                  ciphertext);
+
+    if(sgx_ret != SGX_SUCCESS) {
+        print_error_message(sgx_ret);
+        return -1;
+    }
+
+    if(enclave_ret != SGX_SUCCESS) {
+        print_error_message(enclave_ret);
+        return -1;
+    }
+    return 0;
+}
+
+int experiment_1() {
+    printf("tee benchmark experiment-1 \n");
+    int total_num = 50;  //实验进行总数
+
+    clock_t start,end;     //定义clock_t变量
+    start = clock();       //开始时间
+    for (int i = 1; i <= total_num; i++) {
+        for (int j = 0; j < 100; j++) {
+            if (test_ciphertext_gen() != 0) return -1;
+        }
+    }
+    end = clock();   //结束时间
+    printf("实验一，数据量100, time = %lf ms\n", (double)(end-start)/1000/total_num);   //输出时间（单位:mｓ）
+
+    start = clock();       //开始时间
+    for (int i = 1; i <= total_num; i++) {
+        for (int j = 0; j < 500; j++) {
+            if (test_ciphertext_gen() != 0) return -1;
+        }
+    }
+    end = clock();   //结束时间
+    printf("实验一，数据量500, time = %lf ms\n", (double)(end-start)/1000/total_num);   //输出时间（单位:mｓ）
+
+    start = clock();       //开始时间
+    for (int i = 1; i <= total_num; i++) {
+        for (int j = 0; j < 1000; j++) {
+            if (test_ciphertext_gen() != 0) return -1;
+        }
+    }
+    end = clock();   //结束时间
+    printf("实验一，数据量1000, time = %lf ms\n", (double)(end-start)/1000/total_num);   //输出时间（单位:mｓ）
+
+    start = clock();       //开始时间
+    for (int i = 1; i <= total_num; i++) {
+        for (int j = 0; j < 1500; j++) {
+            if (test_ciphertext_gen() != 0) return -1;
+        }
+    }
+    end = clock();   //结束时间
+    printf("实验一，数据量1500, time = %lf ms\n", (double)(end-start)/1000/total_num);   //输出时间（单位:mｓ）
+
+    start = clock();       //开始时间
+    for (int i = 1; i <= total_num; i++) {
+        for (int j = 0; j < 10000; j++) {
+            if (test_ciphertext_gen() != 0) return -1;
+        }
+    }
+    end = clock();   //结束时间
+    printf("实验一，数据量10000, time = %lf ms\n", (double)(end-start)/1000/total_num);   //输出时间（单位:mｓ）
+}
+
+int experiment_2() {
+    printf("tee benchmark experiment-2 \n");
+    int lens[5] = {4, 8, 16, 32};
+    for (int i = 0; i < 4; i++) {
+        uint32_t length = lens[i];
+        sgx_status_t enclave_ret = SGX_SUCCESS;
+        sgx_status_t sgx_ret = SGX_SUCCESS;
+        int total_num = 50;  //实验进行总数
+
+        clock_t start,end;     //定义clock_t变量
+        start = clock();       //开始时间
+        for (int j = 1; j <= total_num; j++) {
+            for (int k = 0; k < 500; k++) {
+                char key[] = "b00d44fdbec34270";
+                uint8_t aes_ctr_key[16] = {0};
+                memcpy(aes_ctr_key, (uint8_t *)key, sizeof(aes_ctr_key));
+                uint8_t *plaintext = (uint8_t *)generate_random_string(length);
+                uint8_t *ciphertext = (uint8_t *)malloc(length);
+                sgx_ret = aes_ctr_128_encrypt(global_eid,
+                                              &enclave_ret,
+                                              aes_ctr_key,
+                                              plaintext,
+                                              length,
+                                              ciphertext);
+
+                free(plaintext);
+                free(ciphertext);
+
+                if (sgx_ret != SGX_SUCCESS) {
+                    print_error_message(sgx_ret);
+                    return -1;
+                }
+
+                if (enclave_ret != SGX_SUCCESS) {
+                    print_error_message(enclave_ret);
+                    return -1;
+                }
+            }
+        }
+        end = clock();   //结束时间
+        printf("实验二，数据量500, char len = %d, time = %lf ms\n", length, (double)(end-start)/1000/total_num);   //输出时间（单位:mｓ）
+    }
+    return 0;
+}
+
+int experiment_3() {
+    printf("tee benchmark experiment-3 \n");
+    char key[] = "b00d44fdbec34270";
+    uint8_t aes_ctr_key[16] = {0};
+    memcpy(aes_ctr_key, (uint8_t *)key, sizeof(aes_ctr_key));
+    int nbits = 62, res = 0;
+    int total_num = 50;  //实验进行总数
+
+    int64_t num1 = rand() % ((uint64_t)1 << nbits);
+    int64_t num2 = rand() % ((uint64_t)1 << nbits);
+    uint8_t plaintext1[8] = {0};
+    uint8_t plaintext2[8] = {0};
+    memcpy(plaintext1, &num1, sizeof(int64_t));
+    memcpy(plaintext2, &num2, sizeof(int64_t));
+
+    uint8_t ciphertext1[8] = {0};
+    uint8_t ciphertext2[8] = {0};
+
+    sgx_status_t enclave_ret = SGX_SUCCESS;
+    sgx_status_t sgx_ret = SGX_SUCCESS;
+    sgx_ret = aes_ctr_128_encrypt(global_eid,
+                                  &enclave_ret,
+                                  aes_ctr_key,
+                                  plaintext1,
+                                  8,
+                                  ciphertext1);
+
+    if (sgx_ret != SGX_SUCCESS) {
+        print_error_message(sgx_ret);
+        return -1;
+    }
+
+    if (enclave_ret != SGX_SUCCESS) {
+        print_error_message(enclave_ret);
+        return -1;
+    }
+
+    sgx_ret = aes_ctr_128_encrypt(global_eid,
+                                  &enclave_ret,
+                                  aes_ctr_key,
+                                  plaintext2,
+                                  8,
+                                  ciphertext2);
+
+    if (sgx_ret != SGX_SUCCESS) {
+        print_error_message(sgx_ret);
+        return -1;
+    }
+    if (enclave_ret != SGX_SUCCESS) {
+        print_error_message(enclave_ret);
+        return -1;
+    }
+
+    clock_t start,end;     //定义clock_t变量
+    start = clock();       //开始时间
+    for (int i = 1; i <= total_num; i++) {
+        for (int j = 0; j < 20000; j++) {
+            int8_t cmp;
+            sgx_ret = aes_ctr_128_int64_compare(global_eid,
+                                                &enclave_ret,
+                                                aes_ctr_key,
+                                                ciphertext1,
+                                                ciphertext2,
+                                                8,
+                                                &cmp);
+            if(sgx_ret != SGX_SUCCESS) {
+                print_error_message(sgx_ret);
+                return -1;
+            }
+            if(enclave_ret != SGX_SUCCESS) {
+                print_error_message(enclave_ret);
+                return -1;
+            }
+        }
+    }
+    end = clock();   //结束时间
+    printf("实验三，数据量20000, time = %lf ms\n", (double)(end-start)/1000/total_num);   //输出时间（单位:mｓ）
+    return  0;
+}
+
 /* Application entry */
 int SGX_CDECL main(int argc, char *argv[])
 {
@@ -143,37 +367,41 @@ int SGX_CDECL main(int argc, char *argv[])
     (void)(argc);
     (void)(argv);
 
-    /* Initialize the enclave */
+
+    // Initialize the enclave
     if(initialize_enclave() < 0){
         printf("Enter a character before exit ...\n");
         getchar();
         return -1;
     }
 
+    /*
     if (aes_ctr_128() == -1) { 
         printf("error: aes-ctr-128 test failed!\n");
         return -1; 
     };
+     */
     //if (aes_gcm_128() == -1) { return -1; };
+
+    if (experiment_1() == -1) {
+        printf("error: experiment_1 failed!\n");
+        return -1;
+    }
+
+    if (experiment_2() == -1) {
+        printf("error: experiment_2 failed!\n");
+        return -1;
+    }
+
+    if (experiment_3() == -1) {
+        printf("error: experiment_3 failed!\n");
+        return -1;
+    }
 
     /* Destroy the enclave */
     sgx_destroy_enclave(global_eid);
 
     return 0;
-}
-
-char *generate_random_string(int length) {
-    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    const size_t max_index = (int)(sizeof(charset) - 1);
-    char *random_string = (char *)malloc(length + 1);
-
-    if (random_string) {
-        for (int i = 0; i < length; ++i) {
-            random_string[i] = charset[rand() % max_index];
-        }
-        random_string[length] = '\0';
-    }
-    return random_string;
 }
 
 int aes_ctr_128() {

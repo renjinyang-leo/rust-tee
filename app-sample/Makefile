@@ -7,22 +7,12 @@ App_C_Files := $(wildcard ./*.c)
 
 ######## SGX SDK Settings ########
 SGX_SDK ?= /opt/sgxsdk
-SGX_MODE ?= HW
+SGX_MODE ?= SIM
 
 SGX_COMMON_CFLAGS := -m64
 SGX_LIBRARY_PATH := $(SGX_SDK)/lib64
 
-ifeq ($(SGX_DEBUG), 1)
-ifeq ($(SGX_PRERELEASE), 1)
-$(error Cannot set SGX_DEBUG and SGX_PRERELEASE at the same time!!)
-endif
-endif
-
-ifeq ($(SGX_DEBUG), 1)
-	SGX_COMMON_CFLAGS += -O0 -g
-else
-	SGX_COMMON_CFLAGS += -O2
-endif
+SGX_COMMON_CFLAGS += -O0 -g
 SGX_COMMON_CFLAGS += -fstack-protector
 
 
