@@ -360,6 +360,85 @@ int experiment_3() {
     return  0;
 }
 
+int experiment_4() {
+    printf("tee benchmark experiment-4 \n");
+    char key[] = "b00d44fdbec34270";
+    uint8_t aes_ctr_key[16] = {0};
+    memcpy(aes_ctr_key, (uint8_t *)key, sizeof(aes_ctr_key));
+    int nbits = 62, res = 0;
+    int total_num = 50;  //实验进行总数
+    int lens[5] = {4, 8, 16, 32};
+    for (int i = 0; i < 4; i++) {
+        sgx_status_t enclave_ret = SGX_SUCCESS;
+        sgx_status_t sgx_ret = SGX_SUCCESS;
+        uint32_t length = lens[i];
+        uint8_t *plaintext1 = (uint8_t *) generate_random_string(length);
+        uint8_t *plaintext2 = (uint8_t *) generate_random_string(length);
+        uint8_t *ciphertext1 = (uint8_t *) malloc(length);
+        uint8_t *ciphertext2 = (uint8_t *) malloc(length);
+        sgx_ret = aes_ctr_128_encrypt(global_eid,
+                                      &enclave_ret,
+                                      aes_ctr_key,
+                                      plaintext1,
+                                      length,
+                                      ciphertext1);
+        if (sgx_ret != SGX_SUCCESS) {
+            print_error_message(sgx_ret);
+            return -1;
+        }
+
+        if (enclave_ret != SGX_SUCCESS) {
+            print_error_message(enclave_ret);
+            return -1;
+        }
+
+        sgx_ret = aes_ctr_128_encrypt(global_eid,
+                                      &enclave_ret,
+                                      aes_ctr_key,
+                                      plaintext2,
+                                      length,
+                                      ciphertext2);
+        if (sgx_ret != SGX_SUCCESS) {
+            print_error_message(sgx_ret);
+            return -1;
+        }
+        if (enclave_ret != SGX_SUCCESS) {
+            print_error_message(enclave_ret);
+            return -1;
+        }
+        clock_t start, end;     //定义clock_t变量
+        start = clock();       //开始时间
+        for (int i = 1; i <= total_num; i++) {
+            for (int j = 0; j < 20000; j++) {
+                int8_t cmp;
+                sgx_ret = aes_ctr_128_str_compare(global_eid,
+                                                  &enclave_ret,
+                                                  aes_ctr_key,
+                                                  ciphertext1,
+                                                  ciphertext2,
+                                                  length,
+                                                  length,
+                                                  &cmp);
+                if (sgx_ret != SGX_SUCCESS) {
+                    print_error_message(sgx_ret);
+                    return -1;
+                }
+                if (enclave_ret != SGX_SUCCESS) {
+                    print_error_message(enclave_ret);
+                    return -1;
+                }
+            }
+        }
+        end = clock();   //结束时间
+        printf("实验四，数据量20000, char len = %d, time = %lf ms\n", length, (double)(end-start)/1000/total_num);   //输出时间（单位:mｓ）
+        free(plaintext1);
+        free(plaintext2);
+        free(ciphertext1);
+        free(ciphertext2);
+    }
+    return  0;
+}
+
 /* Application entry */
 int SGX_CDECL main(int argc, char *argv[])
 {
@@ -394,6 +473,11 @@ int SGX_CDECL main(int argc, char *argv[])
     }
 
     if (experiment_3() == -1) {
+        printf("error: experiment_3 failed!\n");
+        return -1;
+    }
+
+    if (experiment_4() == -1) {
         printf("error: experiment_3 failed!\n");
         return -1;
     }
